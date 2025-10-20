@@ -23,10 +23,17 @@ jobs:
         env:
           ORG_ACCESS_TOKEN: ${{ secrets.TOKEN_REPO }} 
         run: |
-          # Clona o repositório privado da organização
-          git clone --depth=1 https://x-access-token:${ORG_ACCESS_TOKEN}@github.com/FieldFlowJJ/FIELD-FLOW-FRONTED.git source-repo
+          # 1. Clona o repositório, garantindo que a pasta 'source-repo' seja criada.
+          # O token é injetado via URL.
+          git clone https://x-access-token:${ORG_ACCESS_TOKEN}@github.com/FieldFlowJJ/FIELD-FLOW-FRONTED.git source-repo || { echo "Erro na clonagem. Verifique o token ou a URL."; exit 1; }
+          
+          # 2. Entra na pasta clonada
           cd source-repo
+          
+          # 3. Faz o checkout da branch principal
           git checkout main
+          
+          # 4. Volta para a raiz do repositório de destino (MUITO IMPORTANTE para os comandos seguintes)
           cd ..
 
       - name: Sync files
