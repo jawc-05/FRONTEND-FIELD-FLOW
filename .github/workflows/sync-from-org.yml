@@ -5,10 +5,6 @@ on:
   schedule:
     - cron: "0 */6 * * *"   # Executa a cada 6 horas (ajuste se quiser)
 
-name: Sync from Organization Repo
-
-# ... (on: e jobs: deploy: runs-on: está correto)
-
 jobs:
   sync:
     runs-on: ubuntu-latest
@@ -27,8 +23,6 @@ jobs:
         env:
           ORG_ACCESS_TOKEN: ${{ secrets.TOKEN_REPO }} 
         run: |
-          # ❌ Removido: rm -rf source-repo (Será substituído pelo git clone)
-          
           # Clona o repositório privado da organização
           git clone --depth=1 https://x-access-token:${ORG_ACCESS_TOKEN}@github.com/FieldFlowJJ/FIELD-FLOW-FRONTED.git source-repo
           cd source-repo
@@ -38,11 +32,9 @@ jobs:
       - name: Sync files
         run: |
           # 1. Limpa o diretório de trabalho local (EXCETO a pasta .git)
-          #    Isso garante que o rsync não tenha que deletar arquivos no source-repo.
           find . -maxdepth 1 ! -name .git ! -name . -exec rm -rf {} \;
           
           # 2. Copia o conteúdo da pasta clonada para a raiz
-          #    --exclude='.git' é mantido para não copiar o repositório git da origem.
           rsync -av --delete --exclude='.git' source-repo/ ./
 
       - name: Commit and push changes
