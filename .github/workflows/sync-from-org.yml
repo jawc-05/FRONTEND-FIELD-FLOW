@@ -1,9 +1,9 @@
 name: Sync from Organization Repo
 
 on:
-  workflow_dispatch:        # Permite rodar manualmente
+  workflow_dispatch:
   schedule:
-    - cron: "0 */6 * * *"   # Executa a cada 6 horas (ajuste se quiser)
+    - cron: "0 */6 * * *"
 
 jobs:
   sync:
@@ -23,22 +23,27 @@ jobs:
         env:
           ORG_ACCESS_TOKEN: ${{ secrets.TOKEN_REPO }} 
         run: |
-          # Clonagem bem-sucedida!
+          # A CLONAGEM É FEITA NA RAIZ (./)
           git clone --depth=1 https://x-access-token:${ORG_ACCESS_TOKEN}@github.com/FieldFlowJJ/FIELD-FLOW-FRONTED.git source-repo || { echo "Erro na clonagem. Verifique o token ou a URL."; exit 1; }
           
-          # Checkout dentro da pasta clonada
+          # Entra na pasta clonada para garantir que a branch main esteja pronta
           cd source-repo
           git checkout main
-          # NÃO VOLTAMOS AQUI. O próximo passo rodará na raiz, onde source-repo é visível.
+          # Sai da pasta para que o próximo step de limpeza rode na raiz (IMPORTANTE!)
+          cd ..
 
       - name: Sync files
         run: |
-          # 1. Limpa o diretório de trabalho local (EXCETO a pasta .git)
-          # A pasta source-repo agora é visível neste nível.
-          find . -maxdepth 1 ! -name .git ! -name . -exec rm -rf {} \;
+          # 1. Limpa o diretório de trabalho local (EXCETO a pasta .git e a pasta recém-clonada)
+          # A exclusão da pasta source-repo é crucial, já que ela será removida no rsync
+          find . -maxdepth 1 ! -name .git ! -name . -name source-repo -exec rm -rf {} \;
           
-          # 2. Copia o conteúdo da pasta clonada para a raiz
+          # 2. Copia o conteúdo da pasta clonada (source-repo/) para a raiz (./)
+          #    --exclude='.git' evita que o rsync tente copiar o repositório git da origem.
           rsync -av --delete --exclude='.git' source-repo/ ./
+          
+          # 3. Remove a pasta de origem, pois a cópia foi feita (limpeza final)
+          rm -rf source-repo
 
       - name: Commit and push changes
         run: |
