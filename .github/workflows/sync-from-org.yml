@@ -1,0 +1,50 @@
+name: Sync from Organization Repo
+
+on:
+  workflow_dispatch:        # Permite rodar manualmente
+  schedule:
+    - cron: "0 */6 * * *"   # Executa a cada 6 horas (ajuste se quiser)
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target repo (this one)
+        uses: actions/checkout@v4
+        with:
+          # Permite que o push final use o token padrão da Action
+          persist-credentials: false 
+
+      - name: Configure git
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "actions@github.com"
+
+      - name: Clone source (organization private repo)
+        env:
+          # O Segredo que contém seu PAT (Token Clássico com escopo 'repo')
+          ORG_ACCESS_TOKEN: ${{ secrets.TOKEN_REPO }} 
+        run: |
+          rm -rf source-repo
+          # Clona o repositório privado, usando o PAT injetado na URL para autenticação HTTPS
+          git clone --depth=1 https://x-access-token:${ORG_ACCESS_TOKEN}@github.com/FieldFlowJJ/FIELD-FLOW-FRONTED.git source-repo
+          cd source-repo
+          git checkout main
+          cd ..
+
+      - name: Sync files
+        run: |
+          # Copia conteúdo (exceto .git) do repositório de origem para o raiz do alvo
+          rsync -av --delete --exclude='.git' source-repo/ ./
+
+      - name: Commit and push changes
+        # Não precisa de 'env' aqui; ele usa secrets.GITHUB_TOKEN por padrão para o push
+        run: |
+          git add .
+          if git diff --cached --quiet; then
+            echo "Nenhuma alteração detectada. Nada para enviar."
+            exit 0
+          fi
+          git commit -m "🔄 Sync from organization repo [auto]"
+          # O push usa o secrets.GITHUB_TOKEN para autenticar no PRÓPRIO repositório (o que é permitido)
+          git push origin main
